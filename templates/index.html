@@ -1,0 +1,42 @@
+﻿{% extends "layout.html" %}
+{% block title %}
+    Home
+{% endblock %}
+{% block body %}
+        
+<!-- <div id="content">
+            
+<h1 id="h1">Color Picker</h1>
+            
+<input type="text" id="output" value="#eee"></div> -->
+
+
+<!-- Example row of columns -->
+<div class="row">
+    
+<div class="span6">
+        
+<div id='colorPicker'><!-- Placeholder for color picker canvas.--></div>
+    </div>
+    
+<div class="span6">
+        
+<h2>Current LED Status</h2>
+
+<div id='colorStatus'><!-- Placeholder for color status canvas.--></div>
+        
+        
+<h2>Modes</h2>
+
+<button id='auto_button', onclick="JavaScript:auto_mode();">Auto</button>
+    
+<button id='Lamp_button', onclick="JavaScript:lamp_mode();">Lamp</button>
+            
+<button id='mood_button', onclick="JavaScript:mood_mode();">Mood</button>
+        
+<button id='off_button', onclick="JavaScript:off_mode();">Off</button>
+        
+</div>
+</div>
+
+{% endblock %}

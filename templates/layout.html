@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Welcome{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+        
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/bootstrap-responsive.min.css" rel="stylesheet">
+        
+        
+    <style type="text/css" media="screen">
+        body {
+            background: #333;
+            color: #999;
+            font: 300 100.01%/1.2 "Segoe UI", "Helvetica Neue", Helvetica, "Arial Unicode", Arial, sans-serif;
+            margin: 0 30px;
+        }
+        h1 {
+            font-weight: 300;
+            font-size: 3em;
+            margin: 10px 5px 10px 5px;
+        }
+        p {
+            font-size: 1em;
+        }
+        #picker {
+            width: 500px;
+            min-height: 500px;
+            float: left;
+        }
+        #colorPicker {
+            /* this is the area the svg object is drawn over. */
+            height: 490px;
+            width: 500px;
+            min-height: 490px;
+            min-width: 500px;
+        }
+	
+	#colorStatus {
+            
+            height: 20px;
+            width: 20px;
+            min-height: 20px;
+            min-width: 20px;
+        }
+
+        }
+        #panel {
+            width: 500px;
+            height: 500px;
+            float: right;
+        }
+        #copy a {
+            color: #666;
+            text-decoration: none;
+        }
+        #copy {
+            margin: 0;
+            font-size: .6em;
+            color: #666;
+        }
+	#values {
+                position: absolute;
+                left: 20px;
+                top: 363px;
+                font-size: .7em;
+            }
+    </style>
+    <script src="/static/js/raphael.js" type="text/javascript" charset="utf-8"></script>
+    <script src="/static/js/colorpicker.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            {% block doc_ready %}
+            {% endblock %}     
+        });
+    </script>
+    <script type="text/javascript">
+        window.onload = function () {
+            // this is where colorpicker created
+            var system_state = get_state();
+            cp = Raphael.colorpicker(40, 40, 400, system_state);
+	    paper = Raphael.rect("colorStatus", 20, 20);
+		paper.attr({fill: "#fff", stroke: "none"});
+          //  setInterval(function() { update_color();}, 10000);        
+        };
+
+        function set_mode(){
+	    RGB = Raphael.getRGB(clr);		
+            jQuery.get("/mode/set");
+            update_color();
+        };
+        
+        function get_state(){            
+            var system_state = null
+            $.ajax({
+                   url: '/get/current_state',
+                   async: false,
+                   dataType: 'json',
+                   success: function (json) {
+                   system_state = json.state;
+                   }
+            });
+            return system_state
+        };
+	function off_mode(){
+            jQuery.get("/mode/off");
+            update_color();
+        };
+	function update_color(){
+                cp.color(get_state());
+            	};
+	function lamp_mode(){
+
+            cp.onchange = function (clr) {
+                jQuery.get("/mode/lamp/"+clr.replace('#',''));
+                
+            };
+            update_color();
+            
+	};
+	function mood_mode(){
+	// assigning onchange event handler
+            cp.onchange = function (clr) {
+                jQuery.get("/mode/mood/"+clr.replace('#',''));
+                            };
+            update_color();
+             // setInterval(function() { update_color();}, 10000);
+	}; 
+        </script>
+  </head>
+
+  <body>
+    <div class="container">
+        <div class=page>
+          {% with flashes = get_flashed_messages(with_categories=True) %}
+            {% if flashes %}
+              <ul class=flashes>
+              {% for category, message in flashes %}
+                {% if category == "success" %}
+                    <div class="alert alert-success">{{ message }}</div>
+                {% elif category == "error" %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% elif category == "warning" %}
+                    <div class="alert alert-block">{{ message }}</div>
+                {% else %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endif %}
+              {% endfor %}
+              </ul>
+            {% endif %}
+          {% endwith %}
+          <div class=body>
+          {% block body %}{% endblock %}
+          </div>
+          </br>
+	</div>
+    </div> 
+  </body>
+</html>
+
