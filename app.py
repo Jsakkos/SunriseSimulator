@@ -1,11 +1,11 @@
 ##Sunrise simulator##
 import os
 import sys
-#import tty
-#import pigpio
+import tty
+import pigpio
 import time
 import logging
-import queue
+from multiprocessing import Process, Value
 import threading
 import json
 from datetime import datetime
@@ -17,9 +17,9 @@ BLUE_PIN  = 24
 PINS = [RED_PIN, GREEN_PIN, BLUE_PIN]
 
 #Off for testing
-#pi = pigpio.pi()
+pi = pigpio.pi()
 
-logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',filename='myapp.log', filemode='w', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(threadName)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',filename='myapp.log', filemode='w', level=logging.DEBUG)
 ###Time modes
 class auto_settings:
     def __init__(self,hour,minute,startRGB,finishRGB,duration):
@@ -29,13 +29,13 @@ class auto_settings:
         self.finishRGB = finishRGB
         self.duration = duration
 #Default settings        
-Wakeup_default = auto_settings(7,0,[0,0,0],[255,109,0],500000)
-Wakeup2_default = auto_settings(7,15,[255,109,0],[255,255,255],500000)
-Bedtime_default = auto_settings(23,0,[255,100,0],[0,0,0],1000000)
+Wakeup_default = auto_settings(7,0,[0,0,0],[255,109,0],5000)
+Wakeup2_default = auto_settings(7,15,[255,109,0],[255,255,255],5000)
+Bedtime_default = auto_settings(23,0,[255,100,0],[0,0,0],10000)
 #Programmable settings
-Wakeup = auto_settings(7,0,[0,0,0],[255,109,0],500000)
-Wakeup2 = auto_settings(7,15,[255,109,0],[255,255,255],500000)
-Bedtime = auto_settings(23,0,[255,100,0],[0,0,0],1000000)
+Wakeup = auto_settings(7,0,[0,0,0],[255,109,0],50000)
+Wakeup2 = auto_settings(7,15,[255,109,0],[255,255,255],5000)
+Bedtime = auto_settings(23,0,[255,100,0],[0,0,0],10000)
 
 
 ##Color conversions
@@ -73,7 +73,7 @@ def setLights():
     global RGB
     for i in range(3):  
         # turned off for testing
-#        pi.set_PWM_dutycycle(PINS[i], RGB[i])
+        pi.set_PWM_dutycycle(PINS[i], RGB[i])
         print(PINS[i],RGB[i])
     logging.info('LED state %s',RGB)
       
@@ -136,38 +136,53 @@ def lamp_mode(hex_val):
     RGB = list(hex_to_rgb(hex_val))
 #        setLights()
 #    RGB = hex_to_rgb(hex_val)
-    return jsonify({'success' : True}) 
+    return jsonify({'success' : True})
+    
+#def mood_loop(mode,hex_val):
+  
+        
 @app.route('/mode/mood/<hex_val>', methods=['GET', 'POST'])
 def mood_mode(hex_val):
     global RGB, mode, stop, setRGB
     mode = 'mood'
     logging.info('%s mode enabled', mode)
+    setRGB = list(hex_to_rgb(hex_val))
+    logging.info('Desired color is %s', setRGB)
     stop = False
-    while mode == 'mood' and stop == False:
-        setRGB = list(hex_to_rgb(hex_val))
-        fade(setRGB,10)
-        fade([0,0,0],10)
     return jsonify({'success' : True})     
-    
-if __name__ == '__main__':
-    app.run(host='0.0.0.0')   
-####end flask
+  
 
-### Auto mode loop            
-#while stop ==False:
-#    #Get the current time
-#    now = datetime.now().time()
-#    #morning fade in
-#    if (now.hour == Wakeup.hour and now.minute == Wakeup.minute and mode == 'auto'):
-#        setLights(Wakeup.startRGB)
-#        fade(Wakeup.finishRGB,Wakeup.duration)        
-#    #alert fade out
-#    elif (now.hour == Wakeup2.hour and now.minute == Wakeup2.minute and mode == 'auto'):
-#        setLights(Wakeup2.startRGB)
-#        fade(Wakeup2.finishRGB,Wakeup2.duration)
-#    elif (now.hour == Bedtime.hour and now.minute == Bedtime.minute and mode == 'auto'):
-#        setLights(Bedtime.startRGB)
-#        fade(Bedtime.finishRGB,Bedtime.duration)
-#    time.sleep(30)
+
+def loop():
+    global RGB, mode, stop, setRGB         
+    while stop ==False:
+    ### Auto mode loop
+        if mode =='auto':
+            #Get the current time
+            now = datetime.now().time()
+            #morning fade in
+            if (now.hour == Wakeup.hour and now.minute == Wakeup.minute and mode == 'auto'):
+                setLights(Wakeup.startRGB)
+                fade(Wakeup.finishRGB,Wakeup.duration)        
+            #alert fade out
+            elif (now.hour == Wakeup2.hour and now.minute == Wakeup2.minute and mode == 'auto'):
+                setLights(Wakeup2.startRGB)
+                fade(Wakeup2.finishRGB,Wakeup2.duration)
+            elif (now.hour == Bedtime.hour and now.minute == Bedtime.minute and mode == 'auto'):
+                setLights(Bedtime.startRGB)
+                fade(Bedtime.finishRGB,Bedtime.duration)
+            time.sleep(30)
+        if mode =='mood':
+            logging.debug('%s mode enabled', mode)
+            fade(setRGB,50)
+            time.sleep(1)
+            fade([0,0,0],50)
+            
+if __name__ == '__main__':
+    t = threading.Thread(name='background loop', target=loop)
+    t.start()
+    app.run(host='0.0.0.0')
+
+####end flask
 #       
 #pi.stop()
