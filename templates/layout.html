@@ -85,15 +85,11 @@
             cp = Raphael.colorpicker(40, 40, 400, system_state);
 	    paper = Raphael.rect("colorStatus", 20, 20);
 		paper.attr({fill: "#fff", stroke: "none"});
-          //  setInterval(function() { update_color();}, 10000);        
+	    update_mode_status();
+            setInterval(function() { update_color();}, 10000);        
         };
 
-        function set_mode(){
-	    RGB = Raphael.getRGB(clr);		
-            jQuery.get("/mode/set");
-            update_color();
-        };
-        
+      
         function get_state(){            
             var system_state = null
             $.ajax({
@@ -108,27 +104,46 @@
         };
 	function off_mode(){
             jQuery.get("/mode/off");
-            update_color();
-        };
+             };
 	function update_color(){
                 cp.color(get_state());
             	};
 	function lamp_mode(){
-
             cp.onchange = function (clr) {
                 jQuery.get("/mode/lamp/"+clr.replace('#',''));
                 
             };
             update_color();
-            
-	};
+	    update_mode_status();
+	    };
 	function mood_mode(){
-	// assigning onchange event handler
+		update_mode_status();
+		jQuery.get("/mode/mood");
+		update_mode_status();            
+		// assigning onchange event handler
             cp.onchange = function (clr) {
                 jQuery.get("/mode/mood/"+clr.replace('#',''));
                             };
             update_color();
-             // setInterval(function() { update_color();}, 10000);
+	    update_mode_status();
+          };
+	function cycle_mode(){
+            jQuery.get("/mode/cycle");
+		update_mode_status();
+		setInterval(function() { update_color();}, 200)            
+		 };
+	function update_mode_status(){
+            var system_mode = null
+            $.ajax({
+                   url: '/get/current_mode',
+                   async: false,
+                   dataType: 'json',
+                   success: function (json) {
+                   system_mode = json.mode;
+                   $('#currentmode').text("Mode : " + system_mode);
+                   }
+            });
+            return system_mode
 	}; 
         </script>
   </head>
