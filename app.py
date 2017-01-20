@@ -7,20 +7,30 @@ import sys
 import pigpio
 import time
 import logging
+from logging.handlers import RotatingFileHandler
 from queue import Queue
-from threading import Thread
+import threading
 import json
 from datetime import datetime
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, views
 import random
 
-#Off for testing
-pi = pigpio.pi()             # exit script if no connection
+#Start PIGPIO to control GPIO pins
+pi = pigpio.pi()
 if not pi.connected:
    exit()
 
-    
-logging.basicConfig(format='%(asctime)s %(threadName)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p',filename='myapp.log', filemode='w', level=logging.DEBUG)
+#Setup Logger
+log_formatter = logging.Formatter('%(asctime)s %(threadName)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logFile = 'log.txt'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,backupCount=2, encoding=None, delay=1)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.DEBUG)
+app_log = logging.getLogger('root')
+app_log.setLevel(logging.DEBUG)
+app_log.addHandler(my_handler)
+######
+
 ###Time modes
 class auto_settings:
     def __init__(self,hour,minute,startRGB,finishRGB,duration):
@@ -30,11 +40,10 @@ class auto_settings:
         self.finishRGB = finishRGB
         self.duration = duration
 
-          #Auto settings
+#Auto settings
 Wakeup = auto_settings(7,0,[0,0,0],[255,109,0],500)
 Wakeup2 = auto_settings(7,15,[255,109,0],[255,255,255],500)
 Bedtime = auto_settings(22,30,[255,100,0],[0,0,0],1000)
-
 
 ##Color conversions
 def hex_to_rgb(value):
@@ -45,68 +54,67 @@ def hex_to_rgb(value):
 def rgb_to_hex(rgb):
     return '#%02x%02x%02x' % rgb
 
-
+#LED controller class    
 class LED_Communicator:
     
     def __init__(self):
-        
         self.auto_resume_job = None
         self.queue = Queue()
         self.mode = 'auto'
         self.state = [0,0,0]
         self.set = [0,0,0]
         self.set_mood = [0,0,0]
-        # use a running flag for our while loop
         self.run = True
-        logging.debug("Communicator starting main_loop.")
-        self.thread = Thread(name='Communicator',target=self.main_loop)
+        app_log.debug("Communicator starting main_loop.")
+        self.thread = threading.Thread(name='Communicator',target=self.main_loop)
         self.thread.start()
-        self.mode_thread = Thread(name='Mode Loop',target=self.mode_loop)
+        self.mode_thread = threading.Thread(name='Mode Loop',target=self.mode_loop)
         self.mode_thread.start()
-        logging.debug("Communicator init complete.")
+        self.event = threading.Event()
+        self.lock = threading.Lock()
+        app_log.debug("Communicator init complete.")
         #set GPIO pins being used to control LEDs
         self.pins = [17,22,24]
-        logging.info("Running resume auto, in case were in an auto event.")
+        app_log.info("Running resume auto, in case were in an auto event.")
         self.resume_auto()
-
+        app_log.debug("Communicator init complete.")
     def get_state(self):
-#        print('Desired settings: {} set to {}'.format(self.pins,self.set))
+        app_log.info('Desired settings: {} set to {}'.format(self.pins,self.set))
         # turned off for testing
         for i in range(3):
             self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
-#        print('Pins {} set to {}'.format(self.pins,self.state))
-#        logging.debug("Communicator init complete.")
+        app_log.info('Pins {} set to {}'.format(self.pins,self.state))
+        
     def write(self,set_state):
 
         for i in range(3):  
         # turned off for testing
             pi.set_PWM_dutycycle(self.pins[i], self.state[i])
 #        print(self.pins,set_state)
-#        get_state()
+        self.get_state()
         self.state = set_state
             
-        logging.info('LED state %s',self.state)
+        app_log.debug('LED state {}'.format(self.state))
 
     def main_loop(self):
         try:
-            logging.debug("main_loop - processing queue ...")
+            app_log.debug("main_loop - processing queue ...")
             while self.run :
-                # Grab the next lighting event, block until there is one.
+                #get desired LED color from the queue
                 lighting_event = self.queue.get(block=True)
-                # set our chain state
-#                self.set = lighting_event
+                # set our LED state
                 self.write(lighting_event)
 
         except KeyboardInterrupt:
             self.run = False
-            logging.warning("Caught keyboard interrupt in main_loop.  Shutting down ...")
+            app_log.warning("Caught keyboard interrupt in main_loop.  Shutting down ...")
             
-    def transition(self, set_state,transition_duration=10, transition_mode='fade'):
+    def transition(self, set_state,transition_duration=100, transition_mode='fade'):
         self.set = set_state
+        #clear queue
         with self.queue.mutex:
             self.queue.queue.clear()
-        logging.info("Current state is : %s , destination state is : %s , transitioning via %s in : %d ticks" % (self.state, self.set, transition_mode, transition_duration))
-#        print(("Current state is : %s , destination state is : %s , transitioning via %s in : %d ticks" % (self.state, self.set, transition_mode, transition_duration)))
+        app_log.info("Current state is : %s , destination state is : %s , transitioning via %s in : %d ticks" % (self.state, self.set, transition_mode, transition_duration))
         if transition_mode is 'fade':        
             # Using a modified version of http://stackoverflow.com/questions/6455372/smooth-transition-between-two-states-dynamically-generated for smooth transitions between states.
             for transition_count in range(transition_duration - 1):
@@ -114,30 +122,28 @@ class LED_Communicator:
                 self.get_state()
                 for component in range(3):
                     RGB.append(int((self.state[component] + (self.set[component] - self.state[component]) * transition_count / transition_duration)))
-#                print(RGB)
                 self.queue.put(RGB)
-#                time.sleep(.01)
-
-            # last event is always fixed to the destination state to ensure we get there, regardless of any rounding errors. May need to rethink this mechanism, as I suspect small transitions will be prone to rounding errors resulting in a large final jump.
             self.queue.put(self.set)
 
     def clear_mode(self):
-        logging.debug("Removing mode")
-        self.mode = []
+        app_log.debug("Removing mode")
+        with self.lock:
+            self.mode = []
 
     def resume_auto(self):
           self.clear_mode()
          # returns system state to autonomous, to be triggered via the scheduler, or via a request hook from the web ui.
           self.mode = 'auto'
-          self.write([0,0,0])
-          logging.debug("Resume auto called, system state is now : %s" % self.mode)
+          self.transition([0,0,0])
+          app_log.debug("Resume auto called, system state is now : {}".format(self.mode))
           
     def mode_loop(self):
 
         while self.run:
-            logging.debug('Starting mode loop')
+            app_log.debug('Starting mode loop')
         ### Auto mode loop
-            if self.mode =='auto':
+            if self.mode =='auto' and not self.event.isSet():
+                app_log.info('{} mode running'.format(self.mode))
                 #Get the current time
                 now = datetime.now().time()
 #                morning fade in
@@ -154,17 +160,19 @@ class LED_Communicator:
                     time.sleep(600)
                     self.transition(Bedtime.finishRGB,Bedtime.duration)
                 time.sleep(30)
-            elif self.mode =='mood':
-                logging.debug('%s mode enabled', self.mode)
+            elif self.mode =='mood' and not self.event.isSet():
+                app_log.info('{} mode running'.format(self.mode))
+                app_log.debug('{} mode enabled'.format(self.mode))
                 self.transition(self.set_mood,500)
                 time.sleep(3)
-                self.transition([0,0,0],100)
-            elif self.mode =='cycle':
+                self.transition([0,0,0],500)
+            elif self.mode =='cycle' and not self.event.isSet():
+                app_log.info('{} mode running'.format(self.mode))
                 color=[]
                 for i in range(3):
                     color.append(random.randint(0,255))
                 self.transition(color,500)
-#                time.sleep(10)
+                time.sleep(1)
             time.sleep(1)
 
     def shutdown(self):
@@ -191,82 +199,67 @@ def index():
 #sends the current RGB values to flask    
 @app.route('/get/current_state')
 def get_state():
-    logging.info('Get state %s',LED.state)
+    app_log.info('Get state {}'.format(LED.state))
     return jsonify({'state': "%s" % rgb_to_hex(tuple(LED.state))})
 
             
 @app.route('/get/current_mode')
 def get_mode():
-#    print('Mode is {}'.format(LED.mode))
+    app_log.info('Mode is {}'.format(LED.mode))
     return jsonify({'mode': "%s" % LED.mode}) 
       
-#@app.route('/mode/set/<hex_val>')
-#def set_mode():
-#    LED.transition(hex_to_rgb(hex_val))
-#    return jsonify({'success' : True}) 
-#    
-#@app.route('/set/<hex_val>', methods=['GET', 'POST'])
-#def send_command(hex_val):
-#    LED.transition(hex_to_rgb(hex_val))
-#    return jsonify({'success' : True})
-       
 @app.route('/mode/off')
 def off_mode():
-    logging.debug('Initiate shutdown')
+    app_log.debug('Initiate shutdown')
     LED.shutdown()
-    logging.debug('Turn off system')
-    # Shutdown
-#    sys.exit("System off")
-#    os.system('shutdown now -h')
     return jsonify({'success' : True})
     
 @app.route('/mode/auto')
 def auto_mode():
+    app_log.info('Auto mode called')
+    LED.mode = 'auto'
+    app_log.info('Auto mode set')
+    get_state()
+    app_log.info('Calling Resume Auto')
     LED.resume_auto()
-    logging.info('%s mode enabled', LED.mode)
+    app_log.info('{} mode enabled'.format(LED.mode))
     return jsonify({'success' : True})   
     
 @app.route('/mode/lamp/<hex_val>', methods=['GET', 'POST'])
 def lamp_mode(hex_val):
-    if LED.mode is not 'lamp':
-        LED.mode = 'lamp'
-        get_mode()
-    logging.info('%s mode enabled', LED.mode)
-    logging.info('Desired color is %s', hex_to_rgb(hex_val))
-#    LED.write(hex_to_rgb(hex_val))
+    LED.mode = 'lamp'
+    app_log.info('{} mode enabled'.format(LED.mode))
+    get_mode()
+    app_log.info('Desired color is {}'.format(hex_to_rgb(hex_val)))
     LED.transition(hex_to_rgb(hex_val))
     return jsonify({'success' : True})
         
 @app.route('/mode/mood/<hex_val>', methods=['GET', 'POST'])
 def mood_mode(hex_val):
-    if LED.mode is not 'mood':
-        LED.mode = 'mood'
-#    logging.info('%s mode enabled', LED.mode)
-    logging.info('Desired color is %s', hex_to_rgb(hex_val))
-#    LED.transition(hex_to_rgb(hex_val))
+    LED.mode = 'mood'
+    app_log.info('{} mode enabled'.format(LED.mode))
+    get_mode()
+    app_log.info('Desired color is {}'.format(hex_to_rgb(hex_val)))
     LED.set = hex_to_rgb(hex_val)
     LED.set_mood = hex_to_rgb(hex_val)
     return jsonify({'success' : True})     
 @app.route('/mode/cycle')
 def cycle_mode():
-    if LED.mode is not 'cycle':
-        LED.mode = 'cycle'
+    LED.mode = 'cycle'
+    app_log.info('{} mode enabled'.format(LED.mode))
+    get_mode()
     return jsonify({'success' : True})     
-
-
-
-       
             
 if __name__ == '__main__':
 
     #initialize LED class
     LED = LED_Communicator()
     app.run(host='0.0.0.0')
-    app.logger.info("Calling shutdown on led chain")
+    app_log.info("Calling shutdown on led chain")
     LED.shutdown()
     
-    logging.info("Shutting down logger and exiting ...")
-    logging.shutdown()
+    app_log.info("Shutting down logger and exiting ...")
+    app_log.shutdown()
     exit(0)
 ####end flask
 
