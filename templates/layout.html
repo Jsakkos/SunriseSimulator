@@ -103,6 +103,7 @@
         };
 	function off_mode(){
             jQuery.get("/mode/off");
+	    update_color();
              };
 	function auto_mode(){
             jQuery.get("/mode/auto");
@@ -174,7 +175,7 @@
           <div class=body>
           {% block body %}{% endblock %}
           </div>
-          </br>
+          <br>
 	</div>
     </div> 
   </body>
