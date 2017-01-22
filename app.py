@@ -196,10 +196,10 @@ class LED_Communicator:
         self.mode_thread.join()
         self.thread.join()
         self.write([0, 0, 0])
-        #        pi.stop()
-        sys.exit("System off")
+        pi.stop()
         # Shutdown
         os.system('shutdown now -h')
+        sys.exit("System off")
 
 
 # create our little application
