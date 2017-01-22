@@ -14,11 +14,6 @@ from queue import Queue
 import pigpio
 from flask import Flask, render_template, jsonify
 
-# Start PIGPIO to control GPIO pins
-pi = pigpio.pi('192.168.1.105')
-if not pi.connected:
-    exit()
-
 # Setup Logger
 log_formatter = logging.Formatter('%(asctime)s %(threadName)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s',
                                   datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -30,6 +25,12 @@ app_log = logging.getLogger('root')
 app_log.setLevel(logging.DEBUG)
 app_log.addHandler(my_handler)
 
+# Start PIGPIO to control GPIO pins
+app_log.debug('Starting PIGPIO')
+pi = pigpio.pi()
+if not pi.connected:
+    app_log.warning("Can't connect to Pi")
+    exit()
 
 # Time modes
 class auto_settings:
@@ -94,10 +95,10 @@ class LED_Communicator:
 
         for i in range(3):
             # turned off for testing
-            pi.set_PWM_dutycycle(self.pins[i], self.state[i])
+            pi.set_PWM_dutycycle(self.pins[i], set_state[i])
             # print(self.pins,set_state)
-        #        self.get_state()
-        self.state = set_state
+        self.get_state()
+        # self.state = set_state
         app_log.debug('LED state {}'.format(self.state))
 
     def main_loop(self):
@@ -121,17 +122,14 @@ class LED_Communicator:
             self.state, self.set, transition_mode, transition_duration))
         if transition_mode is 'fade':
             for transition_count in range(transition_duration - 1):
-                if not self.clear:
-                    RGB = []
-                    self.get_state()
-                    for component in range(3):
-                        RGB.append(int((self.state[component] + (
-                            self.set[component] - self.state[component]) * transition_count / transition_duration)))
-                    self.queue.put(RGB)
-                    time.sleep(.01)
+                RGB = []
+                self.get_state()
+                for component in range(3):
+                    RGB.append(int((self.state[component] + (
+                        self.set[component] - self.state[component]) * transition_count / transition_duration)))
+                self.queue.put(RGB)
+                time.sleep(.01)
                 # self.queue.put(self.set)
-                elif self.clear:
-                    break
 
     def clear_mode(self):
         app_log.debug("Removing mode")
@@ -139,10 +137,8 @@ class LED_Communicator:
             self.mode = []
 
     def clear_queue(self):
-        self.clear = True
         with self.queue.mutex:
             self.queue.queue.clear()
-        self.clear = False
 
     def resume_auto(self):
         self.clear_mode()
@@ -187,7 +183,7 @@ class LED_Communicator:
                     for i in range(3):
                         color.append(random.randint(0, 255))
                     self.transition(color, 500)
-                    # time.sleep(1)
+                time.sleep(1)
         except KeyboardInterrupt:
             self.run = False
             app_log.warning("Caught keyboard interrupt in mode_loop.  Shutting down ...")
