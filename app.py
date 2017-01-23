@@ -11,7 +11,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from queue import Queue
 
-import pigpio
+# import pigpio
 from flask import Flask, render_template, jsonify
 
 # Setup Logger
@@ -27,10 +27,10 @@ app_log.addHandler(my_handler)
 
 # Start PIGPIO to control GPIO pins
 app_log.debug('Starting PIGPIO')
-pi = pigpio.pi()
-if not pi.connected:
-    app_log.warning("Can't connect to Pi")
-    exit()
+# pi = pigpio.pi()
+# if not pi.connected:
+#     app_log.warning("Can't connect to Pi")
+#     exit()
 
 # Time modes
 class auto_settings:
@@ -59,6 +59,8 @@ def rgb_to_hex(rgb):
     return '#%02x%02x%02x' % rgb
 
 
+
+
 # LED controller class
 class LED_Communicator:
     def __init__(self):
@@ -76,6 +78,8 @@ class LED_Communicator:
         app_log.debug("Mode loop thread starting")
         self.mode_thread = threading.Thread(name='Mode Loop', target=self.mode_loop)
         self.mode_thread.start()
+        self.button_event = threading.Event()
+        self.button_event.clear()
         self.lock = threading.Lock()
         app_log.debug("Communicator init complete.")
         # set GPIO pins being used to control LEDs
@@ -87,16 +91,23 @@ class LED_Communicator:
     def get_state(self):
         app_log.info('Desired settings: {} set to {}'.format(self.pins, self.set))
         # turned off for testing
-        for i in range(3):
-            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
+        # for i in range(3):
+        #     self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
         app_log.info('Pins {} set to {}'.format(self.pins, self.state))
+
+    def sleep_and_modecheck(self, sleeptime, currentmode):
+        for time in sleeptime:
+            if self.mode == currentmode:
+                time.sleep(0.25)
+            else:
+                break
 
     def write(self, set_state):
 
-        for i in range(3):
-            # turned off for testing
-            pi.set_PWM_dutycycle(self.pins[i], set_state[i])
-            # print(self.pins,set_state)
+        # for i in range(3):
+        #     # turned off for testing
+        #     pi.set_PWM_dutycycle(self.pins[i], set_state[i])
+        print(self.pins,set_state)
         self.get_state()
         # self.state = set_state
         app_log.debug('LED state {}'.format(self.state))
@@ -151,8 +162,10 @@ class LED_Communicator:
 
         try:
             app_log.debug('Starting mode loop')
+
             while self.run:
                 # Auto mode loop
+                self.button_event.clear()
                 if self.mode == 'auto':
                     app_log.info('{} mode running'.format(self.mode))
                     # Get the current time
@@ -170,12 +183,17 @@ class LED_Communicator:
                         self.transition(Bedtime.startRGB)
                         time.sleep(600)
                         self.transition(Bedtime.finishRGB, Bedtime.duration)
-                    time.sleep(30)
+                    # time.sleep(30)
+                    while not self.button_event.wait(timeout=30):
+                        pass
+                    self.button_event.clear()
                 elif self.mode == 'mood':
                     app_log.info('{} mode running'.format(self.mode))
                     app_log.debug('{} mode enabled'.format(self.mode))
                     self.transition(self.set_mood, 500)
-                    time.sleep(3)
+                    while not self.button_event.wait(timeout=3):
+                        pass
+                    self.button_event.clear()
                     self.transition([0, 0, 0], 500)
                 elif self.mode == 'cycle':
                     app_log.info('{} mode running'.format(self.mode))
@@ -183,7 +201,9 @@ class LED_Communicator:
                     for i in range(3):
                         color.append(random.randint(0, 255))
                     self.transition(color, 500)
-                time.sleep(1)
+                while not self.button_event.wait(timeout=1):
+                        pass
+                self.button_event.clear()
         except KeyboardInterrupt:
             self.run = False
             app_log.warning("Caught keyboard interrupt in mode_loop.  Shutting down ...")
@@ -196,7 +216,7 @@ class LED_Communicator:
         self.mode_thread.join()
         self.thread.join()
         self.write([0, 0, 0])
-        pi.stop()
+        # pi.stop()
         # Shutdown
         os.system('shutdown now -h')
         sys.exit("System off")
@@ -235,6 +255,7 @@ def off_mode():
 @app.route('/mode/auto')
 def auto_mode():
     app_log.info('Auto mode called')
+    LED.button_event.set()
     LED.mode = 'auto'
     app_log.info('Auto mode set')
     get_state()
@@ -247,6 +268,7 @@ def auto_mode():
 @app.route('/mode/lamp/<hex_val>', methods=['GET', 'POST'])
 def lamp_mode(hex_val):
     LED.clear_mode()
+    LED.button_event.set()
     LED.mode = 'lamp'
     app_log.info('{} mode enabled'.format(LED.mode))
     LED.clear_queue()
@@ -257,6 +279,7 @@ def lamp_mode(hex_val):
 
 @app.route('/mode/mood/<hex_val>', methods=['GET', 'POST'])
 def mood_mode(hex_val):
+    LED.button_event.set()
     LED.mode = 'mood'
     app_log.info('{} mode enabled'.format(LED.mode))
     get_mode()
@@ -268,6 +291,7 @@ def mood_mode(hex_val):
 
 @app.route('/mode/cycle')
 def cycle_mode():
+    LED.button_event.set()
     LED.mode = 'cycle'
     app_log.info('{} mode enabled'.format(LED.mode))
     get_mode()
