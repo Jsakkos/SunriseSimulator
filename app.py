@@ -29,8 +29,9 @@ app_log.addHandler(my_handler)
 app_log.debug('Starting PIGPIO')
 pi = pigpio.pi()
 if not pi.connected:
-    app_log.warning("Can't connect to Pi")
     exit()
+    app_log.warning("Can't connect to Pi")
+
 
 # Time modes
 class auto_settings:
@@ -43,8 +44,8 @@ class auto_settings:
 
 
 # Auto settings
-Wakeup = auto_settings(7, 0, [0, 0, 0], [255, 109, 0], 500)
-Wakeup2 = auto_settings(7, 15, [255, 109, 0], [255, 255, 255], 500)
+Wakeup = auto_settings(7, 30, [0, 0, 0], [255, 109, 0], 5000)
+Wakeup2 = auto_settings(7, 45, [255, 109, 0], [255, 255, 255], 5000)
 Bedtime = auto_settings(22, 30, [255, 100, 0], [0, 0, 0], 1000)
 
 
@@ -76,6 +77,8 @@ class LED_Communicator:
         app_log.debug("Mode loop thread starting")
         self.mode_thread = threading.Thread(name='Mode Loop', target=self.mode_loop)
         self.mode_thread.start()
+        self.button_event = threading.Event()
+        self.button_event.clear()
         self.lock = threading.Lock()
         app_log.debug("Communicator init complete.")
         # set GPIO pins being used to control LEDs
@@ -147,12 +150,17 @@ class LED_Communicator:
         self.write([0, 0, 0])
         app_log.debug("Resume auto called, system state is now : {}".format(self.mode))
 
+    # todo split mode loop into event loop and mood/cycle loop
     def mode_loop(self):
 
         try:
             app_log.debug('Starting mode loop')
+
             while self.run:
                 # Auto mode loop
+                # todo make transition duration accurate
+                # todo add scheduling from google calendar
+                self.button_event.clear()
                 if self.mode == 'auto':
                     app_log.info('{} mode running'.format(self.mode))
                     # Get the current time
@@ -170,20 +178,30 @@ class LED_Communicator:
                         self.transition(Bedtime.startRGB)
                         time.sleep(600)
                         self.transition(Bedtime.finishRGB, Bedtime.duration)
-                    time.sleep(30)
+                    # time.sleep(30)
+                    while not self.button_event.wait(timeout=30):
+                        pass
+                    self.button_event.clear()
                 elif self.mode == 'mood':
                     app_log.info('{} mode running'.format(self.mode))
                     app_log.debug('{} mode enabled'.format(self.mode))
                     self.transition(self.set_mood, 500)
-                    time.sleep(3)
+                    # time.sleep(3)
+                    while not self.button_event.wait(timeout=3):
+                        pass
+                    self.button_event.clear()
                     self.transition([0, 0, 0], 500)
+                    #todo slow down transitions
                 elif self.mode == 'cycle':
                     app_log.info('{} mode running'.format(self.mode))
                     color = []
                     for i in range(3):
                         color.append(random.randint(0, 255))
                     self.transition(color, 500)
-                time.sleep(1)
+                    # time.sleep(1)
+                    while not self.button_event.wait(timeout=1):
+                        pass
+                    self.button_event.clear()
         except KeyboardInterrupt:
             self.run = False
             app_log.warning("Caught keyboard interrupt in mode_loop.  Shutting down ...")
@@ -235,6 +253,7 @@ def off_mode():
 @app.route('/mode/auto')
 def auto_mode():
     app_log.info('Auto mode called')
+    LED.button_event.set()
     LED.mode = 'auto'
     app_log.info('Auto mode set')
     get_state()
@@ -247,6 +266,7 @@ def auto_mode():
 @app.route('/mode/lamp/<hex_val>', methods=['GET', 'POST'])
 def lamp_mode(hex_val):
     LED.clear_mode()
+    LED.button_event.set()
     LED.mode = 'lamp'
     app_log.info('{} mode enabled'.format(LED.mode))
     LED.clear_queue()
@@ -257,6 +277,7 @@ def lamp_mode(hex_val):
 
 @app.route('/mode/mood/<hex_val>', methods=['GET', 'POST'])
 def mood_mode(hex_val):
+    LED.button_event.set()
     LED.mode = 'mood'
     app_log.info('{} mode enabled'.format(LED.mode))
     get_mode()
@@ -268,6 +289,7 @@ def mood_mode(hex_val):
 
 @app.route('/mode/cycle')
 def cycle_mode():
+    LED.button_event.set()
     LED.mode = 'cycle'
     app_log.info('{} mode enabled'.format(LED.mode))
     get_mode()
