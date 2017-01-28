@@ -83,10 +83,11 @@
             // this is where colorpicker created
             var system_state = get_state();
             cp = Raphael.colorpicker(40, 40, 400, system_state);
-	    paper = Raphael.rect("colorStatus", 20, 20);
-		paper.attr({fill: "#fff", stroke: "none"});
-	    update_mode_status();
-            setInterval(function() { update_color();}, 10000);        
+
+	        update_mode_status();
+	        update_color();
+	        // Rate of automatic updating of the UI can be set here
+            setInterval(function() { update_mode_status(); update_color();}, 1000);
         };
       
         function get_state(){            
@@ -101,25 +102,29 @@
             });
             return system_state
         };
+
 	function off_mode(){
             jQuery.get("/mode/off");
-	    update_color();
+	        update_color();
              };
+
 	function auto_mode(){
             jQuery.get("/mode/auto");
-	    update_color();
+	        update_color();
         };
+
 	function update_color(){
-                cp.color(get_state());
+            cp.color(get_state());
             	};
+
 	function lamp_mode(){
             cp.onchange = function (clr) {
-                jQuery.get("/mode/lamp/"+clr.replace('#',''));
-                
-            };
+            jQuery.get("/mode/lamp/"+clr.replace('#',''));
+                };
             update_color();
-	    update_mode_status();
+	        update_mode_status();
 	    };
+
 	function mood_mode(){
 		update_mode_status();
 		jQuery.get("/mode/mood");
@@ -131,11 +136,13 @@
             update_color();
 	    update_mode_status();
           };
+
 	function cycle_mode(){
             jQuery.get("/mode/cycle");
 		update_mode_status();
 		update_color();          
 		 };
+
 	function update_mode_status(){
             var system_mode = null
             $.ajax({
@@ -155,29 +162,13 @@
   <body>
     <div class="container">
         <div class=page>
-          {% with flashes = get_flashed_messages(with_categories=True) %}
-            {% if flashes %}
-              <ul class=flashes>
-              {% for category, message in flashes %}
-                {% if category == "success" %}
-                    <div class="alert alert-success">{{ message }}</div>
-                {% elif category == "error" %}
-                    <div class="alert alert-error">{{ message }}</div>
-                {% elif category == "warning" %}
-                    <div class="alert alert-block">{{ message }}</div>
-                {% else %}
-                    <div class="alert alert-info">{{ message }}</div>
-                {% endif %}
-              {% endfor %}
-              </ul>
-            {% endif %}
-          {% endwith %}
+
           <div class=body>
           {% block body %}{% endblock %}
           </div>
           <br>
 	</div>
-    </div> 
+    </div>
   </body>
 </html>
 
