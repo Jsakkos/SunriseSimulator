@@ -30,7 +30,7 @@ class auto_settings:
 # Auto settings
 Wakeup = auto_settings(7, 30, [255, 109, 0], 500)
 Wakeup2 = auto_settings(7, 45, [255, 255, 255], 500)
-Bedtime = auto_settings(22, 30, [255, 100, 0], 100)
+Bedtime = auto_settings(22, 55, [255, 100, 0], 100)
 
 
 # Color conversions
