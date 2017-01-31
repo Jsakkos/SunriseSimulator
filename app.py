@@ -56,9 +56,7 @@ class LED_Communicator:
         self.run = True
         self.button_event = threading.Event()
         self.button_event.clear()
-        self.lock = threading.Lock()
         self.delay = 20
-
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
@@ -68,14 +66,11 @@ class LED_Communicator:
         self.write(self.set)
 
     def get_state(self):
-        # turned off for testing
         for i in range(3):
             self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
-            # app_log.info('Pins {} set to {}'.format(self.pins, self.state))
 
     def write(self, set_state):
         for i in range(3):
-            # turned off for testing
             pi.set_PWM_dutycycle(self.pins[i], set_state[i])
         self.get_state()
 
@@ -104,6 +99,7 @@ class LED_Communicator:
                 self.queue.put(RGB)
             time.sleep(self.delay)
 
+
     def clear_queue(self):
         with self.queue.mutex:
             self.queue.queue.clear()
@@ -114,7 +110,7 @@ class LED_Communicator:
         self.clear_queue()
         if mode is 'auto':
             self.transition([0, 0, 0])
-            self.delay = 20
+            self.delay = 10
         elif mode is 'cycle':
             self.delay = .2
         elif mode is 'mood':
@@ -158,9 +154,7 @@ class LED_Communicator:
                 elif self.mode is 'mood':
                     self.transition(self.set_mood, 200)
                     self.button_event.wait(timeout=3)
-                    #
                     self.transition([0, 0, 0], 200)
-
                 elif self.mode == 'cycle':
                     color = []
                     for i in range(3):
@@ -195,30 +189,25 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-
 # sends the current RGB values to flask
 @app.route('/get/current_state')
 def get_state():
     return jsonify({'state': "%s" % rgb_to_hex(tuple(LED.state))})
 
-
 @app.route('/get/current_mode')
 def get_mode():
     return jsonify({'mode': "%s" % LED.mode})
-
 
 @app.route('/mode/off')
 def off_mode():
     LED.shutdown()
     return jsonify({'success': True})
 
-
 @app.route('/mode/auto')
 def auto_mode():
     if LED.mode is not 'auto':
         LED.change_mode('auto')
     return jsonify({'success': True})
-
 
 @app.route('/mode/lamp/<hex_val>', methods=['GET', 'POST'])
 def lamp_mode(hex_val):
@@ -227,7 +216,6 @@ def lamp_mode(hex_val):
     LED.set = hex_to_rgb(hex_val)
     return jsonify({'success': True})
 
-
 @app.route('/mode/mood/<hex_val>', methods=['GET', 'POST'])
 def mood_mode(hex_val):
     if LED.mode is not 'mood':
@@ -235,13 +223,11 @@ def mood_mode(hex_val):
     LED.set_mood = hex_to_rgb(hex_val)
     return jsonify({'success': True})
 
-
 @app.route('/mode/cycle')
 def cycle_mode():
     if LED.mode is not 'cycle':
         LED.change_mode('cycle')
     return jsonify({'success': True})
-
 
 # set the secret key.
 app.secret_key = os.urandom(24)
