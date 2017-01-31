@@ -17,7 +17,6 @@ pi = pigpio.pi()
 if not pi.connected:
     exit()
 
-
 # Time modes
 class auto_settings:
     def __init__(self, hour, minute, color, duration):
@@ -26,24 +25,19 @@ class auto_settings:
         self.color = color
         self.duration = duration
 
-
 # Auto settings
 Wakeup = auto_settings(7, 30, [255, 109, 0], 500)
 Wakeup2 = auto_settings(7, 45, [255, 255, 255], 500)
 Bedtime = auto_settings(22, 55, [255, 100, 0], 100)
 
-
 # Color conversions
-
 def hex_to_rgb(value):
     value = value.lstrip('#')
     lv = len(value)
     return list(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
-
 def rgb_to_hex(rgb):
     return '#%02x%02x%02x' % rgb
-
 
 # LED controller class
 class LED_Communicator:
@@ -56,7 +50,7 @@ class LED_Communicator:
         self.run = True
         self.button_event = threading.Event()
         self.button_event.clear()
-        self.delay = 20
+        self.delay = 10
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
@@ -98,7 +92,6 @@ class LED_Communicator:
             if RGB != self.state:
                 self.queue.put(RGB)
             time.sleep(self.delay)
-
 
     def clear_queue(self):
         with self.queue.mutex:
