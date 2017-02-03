@@ -56,8 +56,6 @@ class LED_Communicator:
         self.thread.start()
         self.mode_thread = threading.Thread(name='Mode Loop', target=self.mode_loop)
         self.mode_thread.start()
-        self.transition_thread = threading.Thread(name='Transition Loop', target=self.transition(self.set))
-        self.transition_thread.start()
         self.write(self.set)
 
     def get_state(self):
