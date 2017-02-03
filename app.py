@@ -108,6 +108,8 @@ class LED_Communicator:
             self.delay = .2
         elif mode is 'mood':
             self.delay = .2
+        elif mode is 'bedtime':
+            self.delay = 1
         else:
             self.delay = 0.01
 
@@ -138,7 +140,7 @@ class LED_Communicator:
                     elif now.hour is Bedtime.hour and now.minute is Bedtime.minute and weekend is False and self.mode is 'auto':
                         self.transition(Bedtime.color)
                         self.button_event.wait(timeout=600)
-                        self.transition(Bedtime.color, Bedtime.duration)
+                        self.transition([0, 0, 0], Bedtime.duration)
                         self.button_event.wait(timeout=30)
 
                     self.button_event.wait(timeout=30)
@@ -154,6 +156,10 @@ class LED_Communicator:
                         color.append(random.randint(0, 255))
                     self.transition(color, 200)
                     self.button_event.wait(timeout=2)
+                elif self.mode == 'bedtime':
+                    self.transition([255, 0, 0], 200)
+                    self.button_event.wait(timeout=30)
+                    self.transition([0, 0, 0], 200)
                 self.button_event.wait(timeout=.2)
                 self.button_event.clear()
 
@@ -200,6 +206,13 @@ def off_mode():
 def auto_mode():
     if LED.mode is not 'auto':
         LED.change_mode('auto')
+    return jsonify({'success': True})
+
+
+@app.route('/mode/bedtime')
+def bedtime_mode():
+    if LED.mode is not 'bedtime':
+        LED.change_mode('bedtime')
     return jsonify({'success': True})
 
 @app.route('/mode/lamp/<hex_val>', methods=['GET', 'POST'])

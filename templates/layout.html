@@ -113,6 +113,11 @@
 	        update_color();
         };
 
+    function bedtime_mode(){
+            jQuery.get("/mode/bedtime");
+	        update_color();
+        };
+
 	function update_color(){
             cp.color(get_state());
             	};
