@@ -50,7 +50,6 @@ class LED_Communicator:
         self.run = True
         self.button_event = threading.Event()
         self.button_event.clear()
-        self.delay = 10
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
@@ -79,7 +78,7 @@ class LED_Communicator:
         except KeyboardInterrupt:
             self.run = False
 
-    def transition(self, set_state, transition_duration=100):
+    def transition(self, set_state, transition_duration=100, delay=.01):
         self.set = set_state
         # clear queue
         self.clear_queue()
@@ -91,7 +90,7 @@ class LED_Communicator:
                     self.set[component] - self.state[component]) * transition_count / transition_duration)))
             if RGB != self.state:
                 self.queue.put(RGB)
-            time.sleep(self.delay)
+            time.sleep(delay)
 
     def clear_queue(self):
         with self.queue.mutex:
@@ -103,15 +102,6 @@ class LED_Communicator:
         self.clear_queue()
         if mode is 'auto':
             self.transition([0, 0, 0])
-            self.delay = 10
-        elif mode is 'cycle':
-            self.delay = .2
-        elif mode is 'mood':
-            self.delay = .2
-        elif mode is 'bedtime':
-            self.delay = 5
-        else:
-            self.delay = 0.01
 
     def mode_loop(self):
 
@@ -131,10 +121,10 @@ class LED_Communicator:
                         weekend = False
                     # morning fade in
                     if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup.color, Wakeup.duration)
+                        self.transition(Wakeup.color, Wakeup.duration, 5)
                         self.button_event.wait(timeout=30)
-                        self.transition(Wakeup2.color, Wakeup2.duration)
-                        self.button_event.wait(timeout=30)
+                        self.transition(Wakeup2.color, Wakeup2.duration, 2)
+                        self.button_event.wait(timeout=300)
                         self.transition([0, 0, 0])
                     else:
                         self.button_event.wait(timeout=30)
@@ -144,19 +134,19 @@ class LED_Communicator:
                     else:
                         self.button_event.wait(1)
                 elif self.mode is 'mood':
-                    self.transition(self.set_mood, 200)
+                    self.transition(self.set_mood, 200, .2)
                     self.button_event.wait(timeout=3)
-                    self.transition([0, 0, 0], 200)
+                    self.transition([0, 0, 0], 200, .2)
                 elif self.mode == 'cycle':
                     color = []
                     for i in range(3):
                         color.append(random.randint(0, 255))
-                    self.transition(color, 200)
+                    self.transition(color, 200, .2)
                     self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
                     self.transition([255, 0, 0], 200)
                     self.button_event.wait(timeout=30)
-                    self.transition([0, 0, 0], 500)
+                    self.transition([0, 0, 0], 250, 2)
                     self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
 
