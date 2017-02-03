@@ -122,9 +122,9 @@ class LED_Communicator:
                     # morning fade in
                     if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
                         self.transition(Wakeup.color, Wakeup.duration, 5)
-                        self.button_event.wait(timeout=30)
+                        self.button_event.wait(timeout=60)
                         self.transition(Wakeup2.color, Wakeup2.duration, 2)
-                        self.button_event.wait(timeout=300)
+                        self.button_event.wait(timeout=600)
                         self.transition([0, 0, 0])
                     else:
                         self.button_event.wait(timeout=30)
@@ -145,7 +145,7 @@ class LED_Communicator:
                     self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
                     self.transition([255, 0, 0], 200)
-                    self.button_event.wait(timeout=30)
+                    self.button_event.wait(timeout=300)
                     self.transition([0, 0, 0], 250, 2)
                     self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
