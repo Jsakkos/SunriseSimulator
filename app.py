@@ -109,7 +109,7 @@ class LED_Communicator:
         elif mode is 'mood':
             self.delay = .2
         elif mode is 'bedtime':
-            self.delay = 1
+            self.delay = 5
         else:
             self.delay = 0.01
 
@@ -117,7 +117,6 @@ class LED_Communicator:
 
         try:
             while self.run:
-                print('Starting Mode loop')
                 # Auto mode loop
                 # todo add scheduling from google calendar
                 self.button_event.clear()
@@ -137,15 +136,13 @@ class LED_Communicator:
                         self.transition(Wakeup2.color, Wakeup2.duration)
                         self.button_event.wait(timeout=30)
                         self.transition([0, 0, 0])
-                    elif now.hour is Bedtime.hour and now.minute is Bedtime.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Bedtime.color)
-                        self.button_event.wait(timeout=600)
-                        self.transition([0, 0, 0], Bedtime.duration)
+                    else:
                         self.button_event.wait(timeout=30)
-
-                    self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
-                    self.transition(self.set, 50)
+                    if self.set != self.state:
+                        self.transition(self.set, 50)
+                    else:
+                        self.button_event.wait(1)
                 elif self.mode is 'mood':
                     self.transition(self.set_mood, 200)
                     self.button_event.wait(timeout=3)
@@ -159,9 +156,10 @@ class LED_Communicator:
                 elif self.mode == 'bedtime':
                     self.transition([255, 0, 0], 200)
                     self.button_event.wait(timeout=30)
-                    self.transition([0, 0, 0], 200)
+                    self.transition([0, 0, 0], 500)
+                    self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
-                self.button_event.clear()
+
 
         except KeyboardInterrupt:
             self.run = False
