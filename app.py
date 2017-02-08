@@ -145,7 +145,7 @@ class LED_Communicator:
                     for i in range(3):
                         color.append(random.randint(0, 255))
                     self.transition(color, 1000, .1)
-                    self.button_event.wait(timeout=1)
+                    self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
                     self.transition([255, 0, 0], 500)
                     self.button_event.wait(timeout=300)
