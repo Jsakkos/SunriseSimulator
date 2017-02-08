@@ -26,8 +26,8 @@ class auto_settings:
         self.duration = duration
 
 # Auto settings
-Wakeup = auto_settings(7, 30, [255, 109, 0], 1000)
-Wakeup2 = auto_settings(7, 45, [255, 255, 255], 1000)
+Wakeup = auto_settings(7, 30, [255, 109, 0], 250)
+Wakeup2 = auto_settings(7, 45, [255, 255, 255], 250)
 
 # Color conversions
 def hex_to_rgb(value):
@@ -51,10 +51,6 @@ class LED_Communicator:
         self.button_event.clear()
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
-        self.range = 1000
-        pi.set_PWM_range(self.pins[0], self.range)
-        pi.set_PWM_range(self.pins[1], self.range)
-        pi.set_PWM_range(self.pins[2], self.range)
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
         self.thread.start()
         self.mode_thread = threading.Thread(name='Mode Loop', target=self.mode_loop)
@@ -63,7 +59,7 @@ class LED_Communicator:
 
     def get_state(self):
         for i in range(3):
-            self.state[i] = pi.get_PWM_dutycycle(self.pins[i]) * 255 / self.range
+            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
 
     def write(self, set_state):
         for i in range(3):
@@ -81,7 +77,7 @@ class LED_Communicator:
         except KeyboardInterrupt:
             self.run = False
 
-    def transition(self, set_state, transition_duration=500, delay=.001):
+    def transition(self, set_state, transition_duration=100, delay=.01):
         self.set = set_state
         # clear queue
         self.clear_queue()
@@ -89,10 +85,10 @@ class LED_Communicator:
             RGB = []
             self.get_state()
             for component in range(3):
-                RGB.append(int((self.state[component] * self.range / 255 + (
-                    self.set[component] * self.range / 255 - self.state[
-                        component] * self.range / 255) * transition_count / transition_duration)))
-            self.queue.put(RGB)
+                RGB.append(int((self.state[component] + (
+                    self.set[component] - self.state[component]) * transition_count / transition_duration)))
+            if RGB != self.state:
+                self.queue.put(RGB)
             time.sleep(delay)
 
     def clear_queue(self):
@@ -124,32 +120,32 @@ class LED_Communicator:
                         weekend = False
                     # morning fade in
                     if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup.color, Wakeup.duration, 2)
+                        self.transition(Wakeup.color, Wakeup.duration, 5)
                         self.button_event.wait(timeout=60)
-                        self.transition(Wakeup2.color, Wakeup2.duration, .5)
+                        self.transition(Wakeup2.color, Wakeup2.duration, 2)
                         self.button_event.wait(timeout=600)
                         self.transition([0, 0, 0])
                     else:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
                     if self.set != self.state:
-                        self.transition(self.set, 200)
+                        self.transition(self.set, 50)
                     else:
                         self.button_event.wait(1)
                 elif self.mode is 'mood':
-                    self.transition(self.set_mood, 1000, .1)
+                    self.transition(self.set_mood, 200, .2)
                     self.button_event.wait(timeout=3)
-                    self.transition([0, 0, 0], 200, .1)
+                    self.transition([0, 0, 0], 200, .2)
                 elif self.mode == 'cycle':
                     color = []
                     for i in range(3):
                         color.append(random.randint(0, 255))
-                    self.transition(color, 1000, .1)
+                    self.transition(color, 250, .2)
                     self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
-                    self.transition([255, 0, 0], 500)
+                    self.transition([255, 0, 0], 250)
                     self.button_event.wait(timeout=300)
-                    self.transition([0, 0, 0], 1000, 1)
+                    self.transition([0, 0, 0], 250, 5)
                     self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
 
