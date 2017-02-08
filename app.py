@@ -26,9 +26,8 @@ class auto_settings:
         self.duration = duration
 
 # Auto settings
-Wakeup = auto_settings(7, 30, [255, 109, 0], 500)
-Wakeup2 = auto_settings(7, 45, [255, 255, 255], 500)
-Bedtime = auto_settings(22, 55, [255, 100, 0], 100)
+Wakeup = auto_settings(7, 30, [255, 109, 0], 250)
+Wakeup2 = auto_settings(7, 45, [255, 255, 255], 250)
 
 # Color conversions
 def hex_to_rgb(value):
@@ -141,12 +140,12 @@ class LED_Communicator:
                     color = []
                     for i in range(3):
                         color.append(random.randint(0, 255))
-                    self.transition(color, 200, .2)
+                    self.transition(color, 250, .2)
                     self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
-                    self.transition([255, 0, 0], 200)
+                    self.transition([255, 0, 0], 250)
                     self.button_event.wait(timeout=300)
-                    self.transition([0, 0, 0], 250, 2)
+                    self.transition([0, 0, 0], 250, 5)
                     self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
 
