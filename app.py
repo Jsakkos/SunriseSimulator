@@ -26,9 +26,9 @@ class auto_settings:
         self.duration = duration
 
 # Auto settings
-Wakeup = auto_settings(7, 30, [255, 109, 0], 250)
-Wakeup2 = auto_settings(7, 45, [255, 255, 255], 250)
-
+Wakeup = auto_settings(6, 30, [255, 109, 0], 250)
+Wakeup2 = auto_settings(6, 45, [255, 255, 255], 250)
+Off = auto_settings(7, 30, [0, 0, 0], 250)
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
@@ -121,10 +121,10 @@ class LED_Communicator:
                     # morning fade in
                     if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
                         self.transition(Wakeup.color, Wakeup.duration, 5)
-                        self.button_event.wait(timeout=60)
+                    elif now.hour is Wakeup2.hour and now.minute is Wakeup2.minute and weekend is False and self.mode is 'auto':
                         self.transition(Wakeup2.color, Wakeup2.duration, 2)
-                        self.button_event.wait(timeout=600)
-                        self.transition([0, 0, 0])
+                    elif now.hour is Off.hour and now.minute is Off.minute and weekend is False and self.mode is 'auto':
+                        self.transition(Off.color, Off.duration, .1)
                     else:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
