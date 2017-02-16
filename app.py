@@ -77,7 +77,7 @@ class LED_Communicator:
         except KeyboardInterrupt:
             self.run = False
 
-    def transition(self, set_state, transition_duration=1):
+    def transition(self, set_state, transition_duration):
         self.set = set_state
         # clear queue
         self.clear_queue()
@@ -108,7 +108,7 @@ class LED_Communicator:
         self.button_event.set()
         self.clear_queue()
         if mode is 'auto':
-            self.transition([0, 0, 0])
+            self.transition([0, 0, 0], 1)
 
     def mode_loop(self):
 
@@ -137,7 +137,7 @@ class LED_Communicator:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
                     if self.set != self.state:
-                        self.transition(self.set, 1)
+                        self.transition(self.set, 0.5)
                     else:
                         self.button_event.wait(1)
                 elif self.mode is 'mood':
