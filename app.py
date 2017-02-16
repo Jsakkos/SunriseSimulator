@@ -26,9 +26,9 @@ class auto_settings:
         self.duration = duration
 
 # Auto settings
-Wakeup = auto_settings(6, 30, [255, 109, 0], 250)
-Wakeup2 = auto_settings(6, 45, [255, 255, 255], 250)
-Off = auto_settings(7, 30, [0, 0, 0], 250)
+Wakeup = auto_settings(6, 30, [255, 109, 0], 600)
+Wakeup2 = auto_settings(6, 45, [255, 255, 255], 300)
+Off = auto_settings(7, 30, [0, 0, 0], 300)
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
@@ -77,18 +77,26 @@ class LED_Communicator:
         except KeyboardInterrupt:
             self.run = False
 
-    def transition(self, set_state, transition_duration=100, delay=.01):
+    def transition(self, set_state, transition_duration=1):
         self.set = set_state
         # clear queue
         self.clear_queue()
-        for transition_count in range(transition_duration - 1):
+        offset = []
+        for component in range(3):
+            offset.append(abs(self.set[component] - self.state[component]))
+        steps = max(offset)
+        delay = transition_duration / steps
+        for i in range(steps):
             RGB = []
-            self.get_state()
             for component in range(3):
-                RGB.append(int((self.state[component] + (
-                    self.set[component] - self.state[component]) * transition_count / transition_duration)))
-            if RGB != self.state:
-                self.queue.put(RGB)
+                difference = self.set[component] - self.state[component]
+                if difference > 0:
+                    RGB.append(self.state[component] + 1)
+                elif difference < 0:
+                    RGB.append(self.state[component] - 1)
+                else:
+                    RGB.append(self.state[component])
+            self.queue.put(RGB)
             time.sleep(delay)
 
     def clear_queue(self):
@@ -120,32 +128,32 @@ class LED_Communicator:
                         weekend = False
                     # morning fade in
                     if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup.color, Wakeup.duration, 5)
+                        self.transition(Wakeup.color, Wakeup.duration)
                     elif now.hour is Wakeup2.hour and now.minute is Wakeup2.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup2.color, Wakeup2.duration, 2)
+                        self.transition(Wakeup2.color, Wakeup2.duration)
                     elif now.hour is Off.hour and now.minute is Off.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Off.color, Off.duration, .1)
+                        self.transition(Off.color, Off.duration)
                     else:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
                     if self.set != self.state:
-                        self.transition(self.set, 50)
+                        self.transition(self.set, 1)
                     else:
                         self.button_event.wait(1)
                 elif self.mode is 'mood':
-                    self.transition(self.set_mood, 200, .2)
+                    self.transition(self.set_mood, 30)
                     self.button_event.wait(timeout=3)
-                    self.transition([0, 0, 0], 200, .2)
+                    self.transition([0, 0, 0], 30)
                 elif self.mode == 'cycle':
                     color = []
                     for i in range(3):
                         color.append(random.randint(0, 255))
-                    self.transition(color, 250, .2)
+                    self.transition(color, 10)
                     self.button_event.wait(timeout=2)
                 elif self.mode == 'bedtime':
-                    self.transition([255, 0, 0], 250)
-                    self.button_event.wait(timeout=300)
-                    self.transition([0, 0, 0], 250, 5)
+                    self.transition([255, 0, 0], 5)
+                    self.button_event.wait(timeout=60)
+                    self.transition([0, 0, 0], 600)
                     self.change_mode('auto')
                 self.button_event.wait(timeout=.2)
 
