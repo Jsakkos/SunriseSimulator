@@ -137,7 +137,7 @@ class LED_Communicator:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
                     if self.set != self.state:
-                        self.transition(self.set, 0.5)
+                        self.transition(self.set, 0)
                     else:
                         self.button_event.wait(1)
                 elif self.mode is 'mood':
