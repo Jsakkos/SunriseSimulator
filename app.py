@@ -6,29 +6,18 @@ import random
 import sys
 import threading
 import time
+from configparser import ConfigParser
 from datetime import datetime, date
 from queue import Queue
 
 import pigpio
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, url_for, redirect
 
 # Start PIGPIO to control GPIO pins
 pi = pigpio.pi()
 if not pi.connected:
     exit()
 
-# Time modes
-class auto_settings:
-    def __init__(self, hour, minute, color, duration):
-        self.hour = hour
-        self.minute = minute
-        self.color = color
-        self.duration = duration
-
-# Auto settings
-Wakeup = auto_settings(6, 30, [255, 109, 0], 600)
-Wakeup2 = auto_settings(6, 45, [255, 255, 255], 300)
-Off = auto_settings(7, 30, [0, 0, 0], 300)
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
@@ -49,6 +38,12 @@ class LED_Communicator:
         self.run = True
         self.button_event = threading.Event()
         self.button_event.clear()
+        # read configuration file
+        config = ConfigParser()
+        config.read('config.ini')
+        self.WakeupHour = int(config.get('Wakeup Settings', 'Hour'))
+        self.WakeupMinute = int(config.get('Wakeup Settings', 'Minute'))
+        self.WakeupDuration = int(config.get('Wakeup Settings', 'Duration'))
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
@@ -127,12 +122,10 @@ class LED_Communicator:
                     else:
                         weekend = False
                     # morning fade in
-                    if now.hour is Wakeup.hour and now.minute is Wakeup.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup.color, Wakeup.duration)
-                    elif now.hour is Wakeup2.hour and now.minute is Wakeup2.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Wakeup2.color, Wakeup2.duration)
-                    elif now.hour is Off.hour and now.minute is Off.minute and weekend is False and self.mode is 'auto':
-                        self.transition(Off.color, Off.duration)
+                    if now.hour is self.WakeupHour and now.minute is self.WakeupMinute and weekend is False and self.mode is 'auto':
+                        self.transition([255, 109, 0], int(self.WakeupDuration / 3))
+                        self.transition([255, 255, 255], int(self.WakeupDuration * 2 / 3))
+                        self.transition([0, 0, 0], 60)
                     else:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
@@ -230,6 +223,23 @@ def cycle_mode():
         LED.change_mode('cycle')
     return jsonify({'success': True})
 
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        LED.WakeupHour = int(request.form.get('hour'))
+        LED.WakeupMinute = int(request.form.get('minute'))
+        LED.WakeupDuration = int(request.form.get('duration')) * 60
+        config = ConfigParser()
+        config.read('config.ini')
+        config.set('Wakeup Settings', 'Hour', str(LED.WakeupHour))
+        config.set('Wakeup Settings', 'Minute', str(LED.WakeupMinute))
+        config.set('Wakeup Settings', 'Duration', str(LED.WakeupDuration))
+        with open('config.ini', 'w') as f:
+            config.write(f)
+
+        return redirect(url_for('index'))
+    return render_template('settings.html')
 # set the secret key.
 app.secret_key = os.urandom(24)
 

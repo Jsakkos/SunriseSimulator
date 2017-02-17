@@ -9,8 +9,6 @@
 <h1 id="h1">Color Picker</h1>
             
 <input type="text" id="output" value="#eee"></div> -->
-
-
 <!-- Example row of columns -->
 <div class="row">
     
@@ -36,8 +34,9 @@
     <button id='Lamp_button' onclick="JavaScript:lamp_mode();">Lamp</button>
 
     <button id='mood_button' onclick="JavaScript:mood_mode();">Mood</button>
-
-
+    <br>
+    <br>
+    <input type="button" onclick="location.href='{{ url_for('settings') }}';" value="Settings"/>
     <button id='off_button' onclick="JavaScript:off_mode();">Off</button>
         
 </div>
