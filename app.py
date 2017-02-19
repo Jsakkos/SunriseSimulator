@@ -20,10 +20,8 @@ if not pi.connected:
 
     # get cwd for config file
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-
-# then:
 filepath = os.path.join(ROOT_PATH, "config.ini")
-print(filepath)
+
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
@@ -246,7 +244,7 @@ def settings():
         config.set('Wakeup Settings', 'Hour', str(LED.WakeupHour))
         config.set('Wakeup Settings', 'Minute', str(LED.WakeupMinute))
         config.set('Wakeup Settings', 'Duration', str(LED.WakeupDuration))
-        with open('config.ini', 'w') as f:
+        with open(filepath, 'w') as f:
             config.write(f)
 
         return redirect(url_for('index'))
