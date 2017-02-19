@@ -18,6 +18,10 @@ pi = pigpio.pi()
 if not pi.connected:
     exit()
 
+    # get cwd for config file
+directory = os.path.dirname(os.path.realpath(__file__))
+filepath = (directory + '\config.ini')
+
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
@@ -40,7 +44,7 @@ class LED_Communicator:
         self.button_event.clear()
         # read configuration file
         config = ConfigParser()
-        config.read('config.ini')
+        config.read(filepath)
         self.WakeupHour = int(config.get('Wakeup Settings', 'Hour'))
         self.WakeupMinute = int(config.get('Wakeup Settings', 'Minute'))
         self.WakeupDuration = int(config.get('Wakeup Settings', 'Duration'))
