@@ -23,6 +23,7 @@ ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # then:
 filepath = os.path.join(ROOT_PATH, "config.ini")
+print(filepath)
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
