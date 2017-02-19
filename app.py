@@ -245,7 +245,7 @@ def settings():
         config.set('Wakeup Settings', 'Hour', str(LED.WakeupHour))
         config.set('Wakeup Settings', 'Minute', str(LED.WakeupMinute))
         config.set('Wakeup Settings', 'Duration', str(LED.WakeupDuration))
-        with open('config.ini', 'w') as f:
+        with open(filepath, 'w') as f:
             config.write(f)
 
         return redirect(url_for('index'))
