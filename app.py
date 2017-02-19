@@ -45,9 +45,14 @@ class LED_Communicator:
         # read configuration file
         config = ConfigParser()
         config.read(filepath)
-        self.WakeupHour = int(config.get('Wakeup Settings', 'Hour'))
-        self.WakeupMinute = int(config.get('Wakeup Settings', 'Minute'))
-        self.WakeupDuration = int(config.get('Wakeup Settings', 'Duration'))
+        if config.get('Wakeup Settings', 'Hour') is not None:
+            self.WakeupHour = int(config.get('Wakeup Settings', 'Hour'))
+            self.WakeupMinute = int(config.get('Wakeup Settings', 'Minute'))
+            self.WakeupDuration = int(config.get('Wakeup Settings', 'Duration'))
+        else:
+            self.WakeupHour = 7
+            self.WakeupMinute = 30
+            self.WakeupDuration = 3600
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
