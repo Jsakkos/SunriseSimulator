@@ -241,7 +241,7 @@ def settings():
         LED.WakeupMinute = int(request.form.get('minute'))
         LED.WakeupDuration = int(request.form.get('duration')) * 60
         config = ConfigParser()
-        config.read('config.ini')
+        config.read(filepath)
         config.set('Wakeup Settings', 'Hour', str(LED.WakeupHour))
         config.set('Wakeup Settings', 'Minute', str(LED.WakeupMinute))
         config.set('Wakeup Settings', 'Duration', str(LED.WakeupDuration))
