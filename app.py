@@ -19,8 +19,10 @@ if not pi.connected:
     exit()
 
     # get cwd for config file
-filepath = os.path.abspath("SunriseSimulator/config.ini")
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 
+# then:
+filepath = os.path.join(ROOT_PATH, "config.ini")
 # Color conversions
 def hex_to_rgb(value):
     value = value.lstrip('#')
