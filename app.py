@@ -5,7 +5,6 @@ import os
 import random
 import sys
 import threading
-import time
 from configparser import ConfigParser
 from datetime import datetime, date
 from queue import Queue
@@ -45,14 +44,21 @@ class LED_Communicator:
         # read configuration file
         config = ConfigParser()
         config.read(filepath)
-        if config.get('Wakeup Settings', 'Hour') is not None:
+        try:
             self.WakeupHour = int(config.get('Wakeup Settings', 'Hour'))
             self.WakeupMinute = int(config.get('Wakeup Settings', 'Minute'))
             self.WakeupDuration = int(config.get('Wakeup Settings', 'Duration'))
-        else:
+        except:
             self.WakeupHour = 7
             self.WakeupMinute = 30
             self.WakeupDuration = 3600
+            config.add_section('Wakeup Settings')
+            config.set('Wakeup Settings', 'Hour', str(self.WakeupHour))
+            config.set('Wakeup Settings', 'Minute', str(self.WakeupMinute))
+            config.set('Wakeup Settings', 'Duration', str(self.WakeupDuration))
+            with open(filepath, 'w') as f:
+                config.write(f)
+
         # set GPIO pins being used to control LEDs
         self.pins = [17, 22, 24]
         self.thread = threading.Thread(name='Communicator', target=self.main_loop)
@@ -61,14 +67,15 @@ class LED_Communicator:
         self.mode_thread.start()
         self.write(self.set)
 
-    def get_state(self):
-        for i in range(3):
-            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
+    # def get_state(self):
+    #     for i in range(3):
+    #         self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
 
     def write(self, set_state):
         for i in range(3):
             pi.set_PWM_dutycycle(self.pins[i], set_state[i])
-        self.get_state()
+            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
+            # self.get_state()
 
     def main_loop(self):
         try:
@@ -101,7 +108,8 @@ class LED_Communicator:
                 else:
                     RGB.append(self.state[component])
             self.queue.put(RGB)
-            time.sleep(delay)
+            # time.sleep(delay)
+            self.button_event.wait(timeout=delay)
 
     def clear_queue(self):
         with self.queue.mutex:
@@ -141,7 +149,7 @@ class LED_Communicator:
                     if self.set != self.state:
                         self.transition(self.set, 0)
                     else:
-                        self.button_event.wait(1)
+                        self.button_event.wait(.1)
                 elif self.mode is 'mood':
                     self.transition(self.set_mood, 30)
                     self.button_event.wait(timeout=3)
