@@ -41,6 +41,7 @@ class LED_Communicator:
         self.run = True
         self.button_event = threading.Event()
         self.button_event.clear()
+        self.delay = 0.01
         # read configuration file
         config = ConfigParser()
         config.read(filepath)
@@ -67,15 +68,13 @@ class LED_Communicator:
         self.mode_thread.start()
         self.write(self.set)
 
-    # def get_state(self):
-    #     for i in range(3):
-    #         self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
+    def get_state(self):
+        for i in range(3):
+            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
 
     def write(self, set_state):
         for i in range(3):
             pi.set_PWM_dutycycle(self.pins[i], set_state[i])
-            self.state[i] = pi.get_PWM_dutycycle(self.pins[i])
-            # self.get_state()
 
     def main_loop(self):
         try:
@@ -96,7 +95,7 @@ class LED_Communicator:
         for component in range(3):
             offset.append(abs(self.set[component] - self.state[component]))
         steps = max(offset)
-        delay = transition_duration / steps
+        self.delay = transition_duration / steps
         for i in range(steps):
             RGB = []
             for component in range(3):
@@ -108,8 +107,9 @@ class LED_Communicator:
                 else:
                     RGB.append(self.state[component])
             self.queue.put(RGB)
+            self.state = RGB
             # time.sleep(delay)
-            self.button_event.wait(timeout=delay)
+            self.button_event.wait(timeout=self.delay)
 
     def clear_queue(self):
         with self.queue.mutex:
@@ -119,6 +119,7 @@ class LED_Communicator:
         self.mode = mode
         self.button_event.set()
         self.clear_queue()
+        self.get_state()
         if mode is 'auto':
             self.transition([0, 0, 0], 1)
 
@@ -196,6 +197,7 @@ def index():
 # sends the current RGB values to flask
 @app.route('/get/current_state')
 def get_state():
+    LED.get_state()
     return jsonify({'state': "%s" % rgb_to_hex(tuple(LED.state))})
 
 @app.route('/get/current_mode')
