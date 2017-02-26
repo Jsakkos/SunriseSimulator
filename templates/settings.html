@@ -7,7 +7,11 @@ Settings
 
 <body>
 <div>
-    <h1>Wakeup Time</h1>
+    <h2>Wakeup Settings</h2>
+    <h3>Current</h3>
+    <h5>Time: {{ Wakeup_time }}</h5>
+    <h5>Duration: {{ Wakeup_duration }}</h5>
+    <h3>Modify Settings</h3>
     <form action="{{ url_for('settings') }}" method='POST'>
         <div class="dropdown">
             <h5>Hour</h5>
@@ -22,8 +26,8 @@ Settings
         <div class="dropdown">
             <h5>Minute</h5>
             <select name='minute'>
-                <option value='0'>0</option>
-                <option value='5'>5</option>
+                <option value='00'>0</option>
+                <option value='05'>5</option>
                 <option value='10'>10</option>
                 <option value='15'>15</option>
                 <option value='20'>20</option>

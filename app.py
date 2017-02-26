@@ -129,7 +129,6 @@ class LED_Communicator:
         try:
             while self.run:
                 # Auto mode loop
-                # todo add scheduling from google calendar
                 self.button_event.clear()
                 if self.mode is 'auto':
                     # Get the current time
@@ -193,7 +192,11 @@ app = Flask(__name__)
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    if LED.WakeupMinute == 0 or LED.WakeupMinute == 5:
+        Wakeup_time = (str(LED.WakeupHour) + ':' + '0' + str(LED.WakeupMinute) + ' am')
+    else:
+        Wakeup_time = (str(LED.WakeupHour) + ':' + str(LED.WakeupMinute) + ' am')
+    return render_template('index.html', Wakeup_time=Wakeup_time)
 
 # sends the current RGB values to flask
 @app.route('/get/current_state')
@@ -259,7 +262,13 @@ def settings():
             config.write(f)
 
         return redirect(url_for('index'))
-    return render_template('settings.html')
+    else:
+        if LED.WakeupMinute == 0 or LED.WakeupMinute == 5:
+            Wakeup_time = (str(LED.WakeupHour) + ':' + '0' + str(LED.WakeupMinute) + ' am')
+        else:
+            Wakeup_time = (str(LED.WakeupHour) + ':' + str(LED.WakeupMinute) + ' am')
+        Wakeup_duration = (str(round(LED.WakeupDuration / 60)) + ' mins')
+    return render_template('settings.html', Wakeup_time=Wakeup_time, Wakeup_duration=Wakeup_duration)
 # set the secret key.
 app.secret_key = os.urandom(24)
 

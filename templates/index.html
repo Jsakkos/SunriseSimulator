@@ -18,11 +18,9 @@
     </div>
     
 <div class="span6">
-        
-<h2>Current Mode</h2>
-        
-<p id='currentmode'>...</p>       
-        
+    <div>
+        <h2>Current Mode</h2> <h5 id='currentmode'>...</h5>
+    </div>
 <h2>Modes</h2>
 
     <button id='auto_button' onclick="JavaScript:auto_mode();">Auto</button>
@@ -34,6 +32,11 @@
     <button id='Lamp_button' onclick="JavaScript:lamp_mode();">Lamp</button>
 
     <button id='mood_button' onclick="JavaScript:mood_mode();">Mood</button>
+    <br>
+    <br>
+
+    <h2>Wakeup Time</h2>
+    <h5>{{ Wakeup_time }}</h5>
     <br>
     <br>
     <input type="button" onclick="location.href='{{ url_for('settings') }}';" value="Settings"/>
