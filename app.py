@@ -83,6 +83,7 @@ class LED_Communicator:
                 lighting_event = self.queue.get(block=True)
                 # set our LED state
                 self.write(lighting_event)
+                self.button_event.wait(timeout=self.delay)
 
         except KeyboardInterrupt:
             self.run = False
@@ -109,7 +110,7 @@ class LED_Communicator:
             self.queue.put(RGB)
             self.state = RGB
             # time.sleep(delay)
-            self.button_event.wait(timeout=self.delay)
+            # self.button_event.wait(timeout=self.delay)
 
     def clear_queue(self):
         with self.queue.mutex:
