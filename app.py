@@ -83,34 +83,42 @@ class LED_Communicator:
                 lighting_event = self.queue.get(block=True)
                 # set our LED state
                 self.write(lighting_event)
-                self.button_event.wait(timeout=self.delay)
+                # self.button_event.wait(timeout=self.delay)
 
         except KeyboardInterrupt:
             self.run = False
 
     def transition(self, set_state, transition_duration):
-        self.set = set_state
+
+        self.get_state()
+        current_state = self.state
         # clear queue
         self.clear_queue()
         offset = []
         for component in range(3):
-            offset.append(abs(self.set[component] - self.state[component]))
+            offset.append(abs(set_state[component] - current_state[component]))
         steps = max(offset)
-        self.delay = transition_duration / steps
+        if steps is not 0:
+            self.delay = transition_duration / steps
+        else:
+            pass
+
         for i in range(steps):
             RGB = []
             for component in range(3):
-                difference = self.set[component] - self.state[component]
+                difference = set_state[component] - current_state[component]
                 if difference > 0:
-                    RGB.append(self.state[component] + 1)
+                    RGB.append(current_state[component] + 1)
                 elif difference < 0:
-                    RGB.append(self.state[component] - 1)
+                    RGB.append(current_state[component] - 1)
                 else:
-                    RGB.append(self.state[component])
+                    RGB.append(current_state[component])
+            current_state = RGB
+            self.set = set_state
             self.queue.put(RGB)
-            self.state = RGB
-            # time.sleep(delay)
-            # self.button_event.wait(timeout=self.delay)
+            # self.state = RGB
+            # time.sleep(self.delay)
+            self.button_event.wait(timeout=self.delay)
 
     def clear_queue(self):
         with self.queue.mutex:
@@ -148,7 +156,7 @@ class LED_Communicator:
                         self.button_event.wait(timeout=30)
                 elif self.mode is 'lamp':
                     if self.set != self.state:
-                        self.transition(self.set, 0)
+                        self.transition(self.set, 0.5)
                     else:
                         self.button_event.wait(.1)
                 elif self.mode is 'mood':
